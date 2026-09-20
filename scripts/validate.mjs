@@ -38,10 +38,43 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { execSync } from 'node:child_process';
 import { detectDiagramType } from './diagram-type.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, '..');
+
+/** A freshly `npx skills add`-installed skill has no node_modules yet (they
+ * aren't, and shouldn't be, checked into the repo). Auto-install once on
+ * first use rather than making every caller know to run "npm install"
+ * first -- mirrors the same pattern scripts/render/*.mjs already use. */
+let autoInstallAttempted = false;
+async function importWithAutoInstall(specifier, friendlyName) {
+  try {
+    return await import(specifier);
+  } catch (firstError) {
+    if (autoInstallAttempted) throw firstError;
+    autoInstallAttempted = true;
+    try {
+      execSync('npm install --no-fund --no-audit', {
+        cwd: repoRoot,
+        stdio: ['pipe', 'pipe', 'inherit'],
+        timeout: 120000,
+      });
+    } catch (installError) {
+      throw new Error(
+        `Missing dependency "${friendlyName}" and auto-install failed: ${installError.message}. Run "npm install" in ${repoRoot} manually.`
+      );
+    }
+    try {
+      return await import(specifier);
+    } catch (secondError) {
+      throw new Error(
+        `Missing dependency "${friendlyName}" (ran "npm install" in ${repoRoot} but it still won't load: ${secondError.message}).`
+      );
+    }
+  }
+}
 
 // ---------------------------------------------------------------------
 // CLI arg parsing
@@ -80,12 +113,7 @@ async function getMermaid() {
   if (mermaidPromise) return mermaidPromise;
 
   mermaidPromise = (async () => {
-    let JSDOM;
-    try {
-      ({ JSDOM } = await import('jsdom'));
-    } catch (e) {
-      throw new Error(`Missing dependency "jsdom". Run "npm install" in ${repoRoot}.`);
-    }
+    const { JSDOM } = await importWithAutoInstall('jsdom', 'jsdom');
 
     // IMPORTANT: mermaid's ESM bundle reads browser globals (window,
     // document, navigator, ...) at *import* time, so all of this must be
@@ -116,15 +144,7 @@ async function getMermaid() {
       global.cancelAnimationFrame = (id) => clearTimeout(id);
     }
 
-    let mermaidMod;
-    try {
-      mermaidMod = await import('mermaid');
-    } catch (e) {
-      throw new Error(
-        `Missing dependency "mermaid" (or it failed to load under the jsdom shim: ${e.message}). Run "npm install" in ${repoRoot}.`
-      );
-    }
-
+    const mermaidMod = await importWithAutoInstall('mermaid', 'mermaid');
     const mermaid = mermaidMod.default;
     mermaid.initialize({ startOnLoad: false, securityLevel: 'loose' });
     return mermaid;

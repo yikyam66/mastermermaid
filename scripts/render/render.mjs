@@ -4,12 +4,37 @@ import { execSync } from 'child_process';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { DEFAULT_PNG_WIDTH, parsePngWidth, renderSvgToPng } from './png.mjs';
-import { renderWithFallback, FALLBACK_SUPPORTED_TYPES } from './fallback-renderer.mjs';
 import { detectDiagramType } from '../diagram-type.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const skillRoot = join(__dirname, '..', '..');
+
+// png.mjs and fallback-renderer.mjs are deliberately NOT imported here at
+// the top level: both statically import a real npm package (@resvg/resvg-js,
+// jsdom) that a freshly `npx skills add`-installed skill won't have yet
+// (node_modules isn't and shouldn't be checked into the repo). A static
+// top-level import of a missing package fails at module-LOAD time, before
+// any of our own try/catch code runs, and produces a raw, unhelpful
+// ERR_MODULE_NOT_FOUND stack trace instead of a clear "run npm install"
+// message -- this was caught by actually running the installed skill from
+// a fresh clone, not just testing in-place. ensureDepsInstalled() below
+// runs once, up front, then both modules are imported dynamically.
+function ensureDepsInstalled() {
+  if (existsSync(join(skillRoot, 'node_modules'))) return;
+  console.error('[render] node_modules not found (fresh install) -- running npm install once...');
+  try {
+    execSync('npm install --no-fund --no-audit', {
+      cwd: skillRoot,
+      stdio: ['pipe', 'pipe', 'inherit'],
+      timeout: 120000,
+    });
+    console.error('[render] Installed successfully.\n');
+  } catch (e) {
+    console.error(`[render] Auto-install failed: ${e.message}`);
+    console.error(`Manual fix: cd ${skillRoot} && npm install`);
+    process.exit(1);
+  }
+}
 
 function toAsciiTheme(colors) {
   if (!colors) return undefined;
@@ -81,7 +106,7 @@ function parseArgs() {
     layerSpacing: 40,
     componentSpacing: 24,
     interactive: false,
-    width: DEFAULT_PNG_WIDTH,
+    width: null, // resolved to DEFAULT_PNG_WIDTH in main(), after png.mjs loads
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -162,16 +187,16 @@ Options:
     process.exit(1);
   }
 
-  if (opts.format === 'png') {
-    opts.width = parsePngWidth(opts.width);
-  }
-
   return opts;
 }
 
 async function main() {
   const opts = parseArgs();
+  ensureDepsInstalled();
   const { renderMermaidSVG, renderMermaidASCII, THEMES } = await loadBeautifulMermaid();
+  const { DEFAULT_PNG_WIDTH, parsePngWidth, renderSvgToPng } = await import('./png.mjs');
+  const { renderWithFallback, FALLBACK_SUPPORTED_TYPES } = await import('./fallback-renderer.mjs');
+  if (opts.format === 'png') opts.width = parsePngWidth(opts.width ?? DEFAULT_PNG_WIDTH);
   const input = readFileSync(opts.input, 'utf8');
 
   if (opts.theme && !Object.prototype.hasOwnProperty.call(THEMES, opts.theme)) {
