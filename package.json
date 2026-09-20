@@ -1,0 +1,28 @@
+{
+  "name": "mastermermaid",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "The most rigorous Mermaid diagram skill for AI coding agents: real grammar validation, semantic linting, auto-repair, and professional themed rendering.",
+  "license": "MIT",
+  "bin": {
+    "mastermermaid-validate": "./scripts/validate.mjs",
+    "mastermermaid-render": "./scripts/render/render.mjs",
+    "mastermermaid-batch": "./scripts/render/batch.mjs",
+    "mastermermaid-themes": "./scripts/render/themes.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "validate": "node scripts/validate.mjs",
+    "render": "node scripts/render/render.mjs",
+    "themes": "node scripts/render/themes.mjs"
+  },
+  "dependencies": {
+    "mermaid": "^12.0.0",
+    "jsdom": "^25.0.0",
+    "beautiful-mermaid": "^1.1.3",
+    "@resvg/resvg-js": "^2.6.2"
+  }
+}

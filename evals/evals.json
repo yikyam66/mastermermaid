@@ -1,0 +1,48 @@
+{
+  "skill_name": "mastermermaid",
+  "evals": [
+    {
+      "id": 0,
+      "name": "sequence-ecommerce-gcp-order-flow",
+      "prompt": "帮我画一个电商下单流程的时序图：用户从 Web 前端发起下单请求，经过 Cloud Load Balancing 转发到 Cloud Run 部署的订单服务，订单服务把事件发布到 Pub/Sub，最后由订阅者服务写入 Cloud Spanner。画完帮我校验一下，再渲染成 dracula 主题的 PNG。",
+      "expected_output": "A valid sequenceDiagram .mmd covering the 5 participants (user/frontend, Cloud Load Balancing, Cloud Run order service, Pub/Sub, Cloud Spanner writer), confirmed valid via the validator, and a PNG rendered with the dracula theme.",
+      "files": [],
+      "expectations": [
+        "mmd_file_present: a .mmd file exists in outputs/",
+        "mmd_is_sequence_diagram: its first meaningful line is 'sequenceDiagram'",
+        "mmd_passes_validator: running scripts/validate.mjs against it returns valid:true",
+        "mentions_all_gcp_components: text references a frontend/user actor, Cloud Load Balancing, Cloud Run, Pub/Sub, and Cloud Spanner (case-insensitive substrings)",
+        "png_output_present: a non-trivial-size (>1KB) .png file exists in outputs/"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "fix-broken-gke-deploy-state-diagram",
+      "prompt": "这个画我们 GKE 发布流水线的状态图坏了，帮我修一下。",
+      "expected_output": "Agent runs the validator, finds the real syntax error (invalid '->' arrow) and the semantic warning (case-typo 'build' vs 'Build'), fixes both, re-validates to confirm clean, and reports what was wrong.",
+      "files": ["broken_gke_pipeline.mmd"],
+      "expectations": [
+        "fixed_file_present: a fixed .mmd file exists in outputs/",
+        "fixed_file_passes_validator: running scripts/validate.mjs against it returns valid:true with zero messages (both the hard error and the semantic warning are gone)",
+        "arrow_syntax_actually_fixed: the DeployToGKE transition line uses '-->' not '->'",
+        "case_typo_actually_fixed: the file no longer contains a bare lowercase 'build' state distinct from 'Build'",
+        "summary_names_root_cause: SUMMARY.md explicitly mentions the arrow/syntax issue, not just a vague 'fixed it'"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "bigquery-er-and-migration-gantt",
+      "prompt": "帮我做一个 BigQuery 数据仓库的 ER 图（users/events/sessions/orders 四张表），再做一个把本地数据库迁移到 GCP（Cloud SQL 存事务数据、BigQuery 做分析、Dataflow 做 ETL）的 8 周甘特图，都存成 SVG。",
+      "expected_output": "Two valid .mmd files (erDiagram with 4 entities + relationships, and a gantt chart spanning 8 weeks with GCP-migration-relevant tasks), both validated, both rendered to SVG.",
+      "files": [],
+      "expectations": [
+        "er_file_present_and_typed: er.mmd exists and starts with 'erDiagram'",
+        "er_has_all_four_entities: users, events, sessions, and orders all appear as entities",
+        "gantt_file_present_and_typed: gantt.mmd exists and starts with 'gantt'",
+        "gantt_spans_about_8_weeks: task date ranges collectively span roughly 8 weeks (56 days, +/- a few days)",
+        "both_pass_validator: both files return valid:true from scripts/validate.mjs",
+        "both_rendered_to_svg: er.svg and gantt.svg both exist and are non-trivial size (>500 bytes)"
+      ]
+    }
+  ]
+}
