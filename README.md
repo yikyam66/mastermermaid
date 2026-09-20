@@ -45,6 +45,16 @@ Render a diagram to SVG with a theme:
 node scripts/render/render.mjs --input diagram.mmd --output out.svg --theme tokyo-night
 ```
 
+## CI / pre-commit integration
+
+MasterMermaid's validator is a plain Node CLI with no AI agent in the loop —
+it exits non-zero on a broken diagram, so any team can gate their own CI or
+Git pre-commit hooks on it, agent or no agent. See
+[references/CI_INTEGRATION.md](./references/CI_INTEGRATION.md) for a tested
+GitHub Actions snippet and a Husky + lint-staged pre-commit setup, including
+the real, runnable `npx --package=github:yikyam66/mastermermaid -- mastermermaid-validate <file> --json`
+one-liner and a multi-file gotcha the testing caught.
+
 ## Diagram types (v1)
 
 MasterMermaid validates and lints all 14 core Mermaid diagram types, and

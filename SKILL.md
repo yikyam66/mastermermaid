@@ -113,8 +113,15 @@ to act on without re-checking it yourself.
 ## Validator CLI reference
 
 ```
-node scripts/validate.mjs <path-to-file.mmd> [--json] [--fix]
+node scripts/validate.mjs <path-to-file.mmd> [<path2.mmd> ...] [--json] [--fix]
 ```
+
+Multiple files can be passed in one call (each is checked independently; the
+overall exit code is 0 only if every file is valid) — useful for a CI step or
+pre-commit hook validating a whole `docs/diagrams/` folder at once. Passing
+exactly one file keeps the single flat `{filePath, diagramType, valid,
+messages}` JSON shape documented below; two or more produces a JSON array of
+that same shape, one entry per file.
 
 **Type detection** — from the file's first meaningful line: `flowchart`/`graph`,
 `sequenceDiagram`, `classDiagram`, `stateDiagram`/`stateDiagram-v2`,

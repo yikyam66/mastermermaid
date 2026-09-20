@@ -2,7 +2,12 @@
 /**
  * scripts/validate.mjs
  *
- * Usage: node scripts/validate.mjs <path-to-file.mmd> [--json] [--fix]
+ * Usage: node scripts/validate.mjs <path-to-file.mmd> [<path2.mmd> ...] [--json] [--fix]
+ *
+ * Multiple files may be passed in one invocation (each checked
+ * independently; overall exit code is 0 only if every file is valid).
+ * Exactly one file keeps the original flat single-object JSON shape;
+ * two or more produce a JSON array of that same shape.
  *
  * Real, deterministic Mermaid syntax validation that runs in plain Node.js
  * -- no headless Chromium / puppeteer / mermaid-cli required.
@@ -82,15 +87,15 @@ async function importWithAutoInstall(specifier, friendlyName) {
 
 function parseArgs(argv) {
   const args = argv.slice(2);
-  let filePath = null;
+  const filePaths = [];
   let json = false;
   let fix = false;
   for (const arg of args) {
     if (arg === '--json') json = true;
     else if (arg === '--fix') fix = true;
-    else if (filePath === null && !arg.startsWith('--')) filePath = arg;
+    else if (!arg.startsWith('--')) filePaths.push(arg);
   }
-  return { filePath, json, fix };
+  return { filePaths, json, fix };
 }
 
 // ---------------------------------------------------------------------
@@ -357,21 +362,17 @@ function emit(result, json) {
 // Main
 // ---------------------------------------------------------------------
 
-async function main() {
-  const { filePath, json, fix } = parseArgs(process.argv);
-
-  if (!filePath) {
-    console.error('Usage: node scripts/validate.mjs <path-to-file.mmd> [--json] [--fix]');
-    process.exit(1);
-  }
-
+/** Validates a single file and returns a result object -- never calls
+ * emit()/process.exit() itself, so main() can use this the same way for
+ * both the single-file and multi-file cases. */
+async function validateOneFile(filePath, { fix }) {
   const absPath = resolve(process.cwd(), filePath);
 
   let originalText;
   try {
     originalText = readFileSync(absPath, 'utf8');
   } catch (e) {
-    const result = {
+    return {
       filePath,
       diagramType: 'unknown',
       valid: false,
@@ -385,8 +386,6 @@ async function main() {
         },
       ],
     };
-    emit(result, json);
-    process.exit(1);
   }
 
   const diagramType = detectDiagramType(originalText);
@@ -411,9 +410,44 @@ async function main() {
   );
   const valid = !messages.some((m) => m.severity === 'error');
 
-  const result = { filePath, diagramType, valid, messages };
-  emit(result, json);
-  process.exit(valid ? 0 : 1);
+  return { filePath, diagramType, valid, messages };
+}
+
+async function main() {
+  const { filePaths, json, fix } = parseArgs(process.argv);
+
+  if (filePaths.length === 0) {
+    console.error('Usage: node scripts/validate.mjs <path-to-file.mmd> [<path2> ...] [--json] [--fix]');
+    process.exit(1);
+  }
+
+  const results = await Promise.all(filePaths.map((fp) => validateOneFile(fp, { fix })));
+
+  // Single-file invocation is unchanged from earlier versions: one flat
+  // {filePath, diagramType, valid, messages} object, not wrapped in an
+  // array. SKILL.md's authoring loop and this project's own tests are
+  // written against that exact single-file contract, so it stays as-is --
+  // multi-file support (below) is additive, not a breaking change.
+  if (results.length === 1) {
+    emit(results[0], json);
+    process.exit(results[0].valid ? 0 : 1);
+  }
+
+  // Multi-file: a naive "pass every staged/matched file as one command
+  // line" caller (a lint-staged config, a hand-rolled CI loop, ...) should
+  // get every file actually checked, not just the first -- an earlier
+  // version of this CLI only ever looked at its first argument, which let
+  // a broken diagram slip through a real pre-commit hook silently.
+  if (json) {
+    console.log(JSON.stringify(results, null, 2));
+  } else {
+    for (const result of results) {
+      console.log(`${result.filePath}:`);
+      console.log(formatHuman(result));
+      console.log('');
+    }
+  }
+  process.exit(results.every((r) => r.valid) ? 0 : 1);
 }
 
 main().catch((e) => {

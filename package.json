@@ -17,7 +17,8 @@
   "scripts": {
     "validate": "node scripts/validate.mjs",
     "render": "node scripts/render/render.mjs",
-    "themes": "node scripts/render/themes.mjs"
+    "themes": "node scripts/render/themes.mjs",
+    "test": "node --test"
   },
   "dependencies": {
     "mermaid": "^12.0.0",
