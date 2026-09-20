@@ -2,9 +2,8 @@
 
 Deterministic Mermaid diagram validation, semantic linting, and auto-repair for AI coding agents — no headless browser required.
 
-[![npm version](https://img.shields.io/npm/v/mastermermaid.svg)](https://www.npmjs.com/package/mastermermaid)
+[![skills.sh](https://skills.sh/b/yikyam66/mastermermaid)](https://skills.sh/yikyam66/mastermermaid)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
-[![skills.sh](https://img.shields.io/badge/skills.sh-mastermermaid-informational)](https://skills.sh)
 
 MasterMermaid is a Mermaid-diagram skill for AI coding agents — Claude Code, Trae, Zed, Cursor, and the ~20 other agents [skills.sh](https://skills.sh) supports. It gives an agent (or a CI pipeline) a way to check that a Mermaid diagram actually parses, catch diagrams that parse but don't make sense, fix what it can automatically, and render the result with real themes.
 
